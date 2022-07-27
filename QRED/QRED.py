@@ -22,19 +22,20 @@ class ConnInfo:
 
     # update the rtt estimation and connection fields if necessary
     def new_measurement(self, curr_ts: float):
-        latest_rtt = curr_ts - self.delay_ts # calculate the time difference from last delay bit
-        self.rtt = self.calc_rtt(latest_rtt) # update rtt
-        self.rtt_measurements.append((latest_rtt, curr_ts)) # insert measurement to measurements array
-        self.delay_ts = curr_ts # update last delay bit timestamp
-    
+        latest_rtt = curr_ts - self.delay_ts  # calculate the time difference from last delay bit
+        self.rtt = self.calc_rtt(latest_rtt)  # update rtt
+        self.rtt_measurements.append((latest_rtt, curr_ts))  # insert measurement to measurements array
+        self.delay_ts = curr_ts  # update last delay bit timestamp
+
     # calculate a new rtt with the moving average algorithm
     def calc_rtt(self, new_rtt: float):
-        if self.rtt is None: # if we don't have an estimation yet, use the last measurement as the estimation
+        if self.rtt is None:  # if we don't have an estimation yet, use the last measurement as the estimation
             return new_rtt
         alpha = 7 / 8
-        return alpha * self.rtt + (1 - alpha) * new_rtt 
+        return alpha * self.rtt + (1 - alpha) * new_rtt
 
-    # override the default cast to string
+        # override the default cast to string
+
     def __str__(self):
         last_edge_ts = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.delay_ts))
         if self.rtt is None:
@@ -45,7 +46,8 @@ class ConnInfo:
         return res
 
     # convert measurements array to string for printing purposes
-    def measurements_tostr(self, measurements: dict):
+    def measurements_tostr(self):
+        measurements = self.rtt_measurements
         if len(measurements) == 0:
             return "No Measurements"
         res = ""
@@ -54,7 +56,8 @@ class ConnInfo:
             timestamp_ms = timestamp % 1
             timestamp_ms = str(timestamp_ms)[2:8]
             rtt = "%.3f ms" % (measurement[0] * 1000)
-            res += "%3s: %8s :: %s.%s\n" % (str(i), rtt, time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(timestamp)), timestamp_ms)
+            res += "%3s: %8s :: %s.%s\n" % (str(i), rtt, time.strftime('%Y-%m-%d %H:%M:%S',
+                                                                       time.localtime(timestamp)), timestamp_ms)
         return res
 
 
@@ -77,81 +80,90 @@ def print_conns(conn_dict: dict, log_file=None, print_separate_files=False, time
             with open(conn_log, "w+") as file:
                 file.write("Connection ID: " + str(key) + "\n" + str(value) + "\n" + "RTT Measurements:\n")
 
-                measurements_str = value.measurements_tostr(value.rtt_measurements)
+                measurements_str = value.measurements_tostr()
                 file.write(measurements_str)
 
                 file.close()
 
 
 # print final message to default output and log file
-def print_finish(log = None):
+def print_finish(log_file=None):
     print("Stopping Estimator")
 
-    if log is not None:
-        log.write("Stopping Estimator\n")
+    if log_file is not None:
+        log_file.write("Stopping Estimator\n")
 
-def process_quic_layer(packet, quic_layer, connections_dict: dict):
-    # Extract values from quic header
 
-    if not layer.has_field("short"): # nothing to do if there isn't a short header
+def process_quic_layer(quic_packet, quic_layer, connections: dict):
+
+    if not layer.has_field("short"):  # nothing to do if there isn't a short header
         return
 
     short_raw = quic_layer.get_field_value("short_raw")[0]
     curr_delay = get_delay_from_flags(get_flags(short_raw))
-    if not curr_delay: # nothing to do if the delay bit is not turned on
+    if not curr_delay:  # nothing to do if the delay bit is not turned on
         return
 
     if quic_layer.has_field("dcid"):
-        curr_dcid = quic_layer.get_field_value("dcid") # dcid = Destination Connection ID
+        curr_dcid = quic_layer.get_field_value("dcid")  # dcid = Destination Connection ID
     elif quic_layer.has_field("short"):
         curr_dcid = quic_layer.get_field_value("short").get_field_value("dcid")
     else:
         curr_dcid = None
-    curr_ts = float(packet.sniff_timestamp)
+    curr_ts = float(quic_packet.sniff_timestamp)
 
     if curr_dcid is not None:
-        curr_info = connections_dict.setdefault(curr_dcid, ConnInfo(curr_ts)) # add connection if new
-        curr_info.new_measurement(curr_ts) # insert the new measurement to the connection's info
+        curr_info = connections.setdefault(curr_dcid, ConnInfo(curr_ts))  # add connection if new
+        curr_info.new_measurement(curr_ts)  # insert the new measurement to the connection's info
 
+
+# Extract the flags from the raw short header
 def get_flags(short_raw: str) -> str:
     return short_raw[0:2]
 
+
+# Extract a certain bit from the flags
+def get_bit_from_flags(flags: str, bit_mask: int):
+    assert (len(flags) == 2)
+    return bool(int(flags, 16) & bit_mask)
+
+
+# Extract the delay bit from the flags
 def get_delay_from_flags(flags: str) -> bool:
-    assert(len(flags) == 2)
+    assert (len(flags) == 2)
     delay_mask = 0x10
-    return bool(int(flags, 16) & delay_mask)
+    return get_bit_from_flags(flags, delay_mask)
 
 
 if __name__ == "__main__":
     """
-    dictionary's keys: connection ID
-    dictionary's values: [current spinbit's value, estimated RTT, last edge timestamp, rtt measurements]
+    dictionary's keys: Connection ID
+    dictionary's values: ConnInfo instance depicting relevant connection
     """
     connections_dict = {}
     start_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
 
-    filename = ".\\QRED\\logs\\log.txt" # change this in order to output to a different file
+    filename = ".\\QRED\\logs\\log.txt"  # change this in order to output to a different file
 
-    if not os.path.exists(".\\QRED\\logs"): # check if logs folder exists
-        os.makedirs(".\\QRED\\logs")        # create logs folder if not
+    if not os.path.exists(".\\QRED\\logs"):  # check if logs folder exists
+        os.makedirs(".\\QRED\\logs")  # create logs folder if not
         print("logs folder created at " + os.getcwd() + "\\QRED\\logs")
 
-    log = open(filename, "a") # open log file in mode=append
+    log = open(filename, "a")  # open log file in mode=append
     log.write("\nStarting capture on time: " + start_time + "\n")
 
     live_cap = pyshark.LiveCapture(display_filter="quic", include_raw=True, use_json=True)
 
-    # all quic layers have a "header_form" field or a "short" field which has its own "header_form" field (layer.short.header_form)
-    # all quic layers have a "payload" or a "remaining_payload" fields but never both.
     try:
         for packet in live_cap.sniff_continuously():
             for layer in packet.layers:
                 if layer.layer_name == "quic":
                     process_quic_layer(packet, layer, connections_dict)
 
-    except KeyboardInterrupt: # when stopped with Ctrl+C
-        print_conns(connections_dict, log_file=log, print_separate_files=True, timestamp=start_time) # print the info of the connection and record it in log.txt
-        print_finish(log) # print final message
+    except KeyboardInterrupt:  # when stopped with Ctrl+C
+        # print the info of the connection and record it in log.txt
+        print_conns(connections_dict, log_file=log, print_separate_files=True, timestamp=start_time)
+        print_finish(log)  # print final message
 
     finally:
         log.close()
