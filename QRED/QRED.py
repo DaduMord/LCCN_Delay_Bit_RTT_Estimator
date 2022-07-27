@@ -23,19 +23,20 @@ class ConnInfo:
     # update the rtt estimation and connection fields if necessary
     def new_measurement(self, curr_ts: float):
         latest_rtt = curr_ts - self.delay_ts  # calculate the time difference from last delay bit
+        if latest_rtt == 0.0:
+            return
         self.rtt = self.calc_rtt(latest_rtt)  # update rtt
         self.rtt_measurements.append((latest_rtt, curr_ts))  # insert measurement to measurements array
         self.delay_ts = curr_ts  # update last delay bit timestamp
 
     # calculate a new rtt with the moving average algorithm
-    def calc_rtt(self, new_rtt: float):
+    def calc_rtt(self, new_rtt: float) -> float:
         if self.rtt is None:  # if we don't have an estimation yet, use the last measurement as the estimation
             return new_rtt
         alpha = 7 / 8
         return alpha * self.rtt + (1 - alpha) * new_rtt
 
-        # override the default cast to string
-
+    # override the default cast to string
     def __str__(self):
         last_edge_ts = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.delay_ts))
         if self.rtt is None:
@@ -46,7 +47,7 @@ class ConnInfo:
         return res
 
     # convert measurements array to string for printing purposes
-    def measurements_tostr(self):
+    def measurements_tostr(self) -> str:
         measurements = self.rtt_measurements
         if len(measurements) == 0:
             return "No Measurements"
@@ -95,7 +96,6 @@ def print_finish(log_file=None):
 
 
 def process_quic_layer(quic_packet, quic_layer, connections: dict):
-
     if not layer.has_field("short"):  # nothing to do if there isn't a short header
         return
 
@@ -123,7 +123,7 @@ def get_flags(short_raw: str) -> str:
 
 
 # Extract a certain bit from the flags
-def get_bit_from_flags(flags: str, bit_mask: int):
+def get_bit_from_flags(flags: str, bit_mask: int) -> bool:
     assert (len(flags) == 2)
     return bool(int(flags, 16) & bit_mask)
 
