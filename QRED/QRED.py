@@ -14,13 +14,13 @@ class ConnInfo:
                     made for this connection and their timestamps (in tuple form).
     """
 
-    # initialize a new conn_info class. default for rtt field is None
+    # Initialize a new conn_info class. default for rtt field is None
     def __init__(self, edge_ts: float, rtt: float = None):
         self.rtt = rtt
         self.delay_ts = edge_ts
         self.rtt_measurements = []
 
-    # update the rtt estimation and connection fields if necessary
+    # Update the rtt estimation and connection fields if necessary
     def new_measurement(self, curr_ts: float):
         latest_rtt = curr_ts - self.delay_ts  # calculate the time difference from last delay bit
         if latest_rtt == 0.0:
@@ -29,14 +29,14 @@ class ConnInfo:
         self.rtt_measurements.append((latest_rtt, curr_ts))  # insert measurement to measurements array
         self.delay_ts = curr_ts  # update last delay bit timestamp
 
-    # calculate a new rtt with the moving average algorithm
+    # Calculate a new rtt with the moving average algorithm
     def calc_rtt(self, new_rtt: float) -> float:
         if self.rtt is None:  # if we don't have an estimation yet, use the last measurement as the estimation
             return new_rtt
         alpha = 7 / 8
         return alpha * self.rtt + (1 - alpha) * new_rtt
 
-    # override the default cast to string
+    # Override the default cast to string
     def __str__(self):
         last_edge_ts = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.delay_ts))
         if self.rtt is None:
@@ -46,7 +46,7 @@ class ConnInfo:
         res += "Last Edge Timestamp: " + last_edge_ts + "\n"
         return res
 
-    # convert measurements array to string for printing purposes
+    # Convert measurements array to string for printing purposes
     def measurements_tostr(self) -> str:
         measurements = self.rtt_measurements
         if len(measurements) == 0:
@@ -62,7 +62,7 @@ class ConnInfo:
         return res
 
 
-# print the dictionary nicely to the default output and log file
+# Print the dictionary nicely to the default output and log file
 def print_conns(conn_dict: dict, log_file=None, print_separate_files=False, timestamp=None):
     """
     Expects a dictionary of type Connection ID : conn_info
@@ -87,34 +87,34 @@ def print_conns(conn_dict: dict, log_file=None, print_separate_files=False, time
                 file.close()
 
 
-# print final message to default output and log file
+# Print final message to default output and log file
 def print_finish(log_file=None):
     print("Stopping Estimator")
 
     if log_file is not None:
         log_file.write("Stopping Estimator\n")
 
-
+# Process the quic layer and update the dictionary if necessary
 def process_quic_layer(quic_packet, quic_layer, connections: dict):
-    if not layer.has_field("short"):  # nothing to do if there isn't a short header
-        return
-
-    short_raw = quic_layer.get_field_value("short_raw")[0]
-    curr_delay = get_delay_from_flags(get_flags(short_raw))
-    if not curr_delay:  # nothing to do if the delay bit is not turned on
-        return
-
-    if quic_layer.has_field("dcid"):
-        curr_dcid = quic_layer.get_field_value("dcid")  # dcid = Destination Connection ID
+    if quic_layer.has_field("dcid"):  # extract the dcid (Destination Connection ID)
+        curr_dcid = quic_layer.get_field_value("dcid")
     elif quic_layer.has_field("short"):
         curr_dcid = quic_layer.get_field_value("short").get_field_value("dcid")
     else:
         curr_dcid = None
-    curr_ts = float(quic_packet.sniff_timestamp)
+    curr_ts = float(quic_packet.sniff_timestamp)  # extract the timestamp of the packet
 
-    if curr_dcid is not None:
-        curr_info = connections.setdefault(curr_dcid, ConnInfo(curr_ts))  # add connection if new
-        curr_info.new_measurement(curr_ts)  # insert the new measurement to the connection's info
+    if curr_dcid is not None and curr_dcid not in connections.keys():  # add connection if new
+        connections[curr_dcid] = ConnInfo(curr_ts)
+
+    if not layer.has_field("short"):  # nothing to do if there isn't a short header
+        return
+
+    short_raw = quic_layer.get_field_value("short_raw")[0]  # extract the raw short information
+    curr_delay_bit = get_delay_from_flags(get_flags(short_raw))  # extract the delay bit
+
+    if curr_delay_bit and curr_dcid is not None:  # nothing to do if the delay bit is not turned on
+        connections[curr_dcid].new_measurement(curr_ts)  # insert the new measurement to the connection's info
 
 
 # Extract the flags from the raw short header
@@ -140,7 +140,7 @@ if __name__ == "__main__":
     dictionary's keys: Connection ID
     dictionary's values: ConnInfo instance depicting relevant connection
     """
-    connections_dict = {}
+    connections_dict: dict[str, ConnInfo] = {}
     start_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
 
     filename = ".\\QRED\\logs\\log.txt"  # change this in order to output to a different file
