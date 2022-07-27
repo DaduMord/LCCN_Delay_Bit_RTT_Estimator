@@ -26,7 +26,5 @@ class MyTestCase(unittest.TestCase):
         assert delay_bit
 
 
-
-
 if __name__ == '__main__':
     unittest.main()
