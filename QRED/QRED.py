@@ -150,7 +150,7 @@ if __name__ == "__main__":
         print("logs folder created at " + os.getcwd() + "\\QRED\\logs")
 
     log = open(filename, "a")  # open log file in mode=append
-    log.write("\nStarting capture on time: " + start_time + "\n")
+    log.write("\nStarting capture on time: " + start_time + "\n\n")
 
     live_cap = pyshark.LiveCapture(display_filter="quic", include_raw=True, use_json=True)
 
