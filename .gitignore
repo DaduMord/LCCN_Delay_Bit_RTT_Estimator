@@ -1,3 +1,4 @@
 .idea/
 .vscode/
 QRED/logs/
+QRED/__pycache__/
