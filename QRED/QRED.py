@@ -1,5 +1,6 @@
 import pyshark
 import time
+import platform
 import os
 
 
@@ -77,7 +78,7 @@ def print_conns(conn_dict: dict, log_file=None, print_separate_files=False, time
         if log_file is not None:
             log_file.write("Connection ID: " + str(key) + "\n" + str(value) + "\n")
         if print_separate_files:
-            conn_log = ".\\QRED\\logs\\" + timestamp.replace(":", ".") + " ID " + str(key).replace(":", "") + ".txt"
+            conn_log = "." + dir_sign + "QRED" + dir_sign + "logs" + dir_sign + timestamp.replace(":", ".") + " ID " + str(key).replace(":", "") + ".txt"
             with open(conn_log, "w+") as file:
                 file.write("Connection ID: " + str(key) + "\n" + str(value) + "\n" + "RTT Measurements:\n")
 
@@ -136,18 +137,25 @@ def get_delay_from_flags(flags: str) -> bool:
 
 
 if __name__ == "__main__":
+    sys_type = platform.system()  # need to check system type to know whether to use \ or /.
+    if sys_type == "Windows":
+        dir_sign = "\\"
+    elif sys_type == "Linux":
+        dir_sign = "/"
+    else:
+        raise Exception("Error: Script should be run on Windows or Linux platforms only")
+
     """
     dictionary's keys: Connection ID
     dictionary's values: ConnInfo instance depicting relevant connection
     """
     connections_dict: dict = {}
     start_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
+    filename = "." + dir_sign + "QRED" + dir_sign + "logs" + dir_sign + "log.txt"  # change this in order to output to a different file
 
-    filename = ".\\QRED\\logs\\log.txt"  # change this in order to output to a different file
-
-    if not os.path.exists(".\\QRED\\logs"):  # check if logs folder exists
-        os.makedirs(".\\QRED\\logs")  # create logs folder if not
-        print("logs folder created at " + os.getcwd() + "\\QRED\\logs")
+    if not os.path.exists("." + dir_sign + "QRED" + dir_sign + "logs"):  # check if logs folder exists
+        os.makedirs("." + dir_sign + "QRED" + dir_sign + "logs")  # create logs folder if not
+        print("logs folder created at " + os.getcwd() + dir_sign + "QRED" + dir_sign + "logs")
 
     log = open(filename, "a")  # open log file in mode=append
     log.write("\nStarting capture on time: " + start_time + "\n\n")
