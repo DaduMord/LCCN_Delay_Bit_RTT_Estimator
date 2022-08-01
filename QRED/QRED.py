@@ -140,7 +140,7 @@ if __name__ == "__main__":
     dictionary's keys: Connection ID
     dictionary's values: ConnInfo instance depicting relevant connection
     """
-    connections_dict: dict[str, ConnInfo] = {}
+    connections_dict: dict = {}
     start_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
 
     filename = ".\\QRED\\logs\\log.txt"  # change this in order to output to a different file
