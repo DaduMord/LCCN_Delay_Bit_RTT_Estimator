@@ -64,7 +64,7 @@ class ConnInfo:
 
 
 # Print the dictionary nicely to the default output and log file
-def print_conns(conn_dict: dict, log_file=None, print_separate_files=False, timestamp=None):
+def print_conns(conn_dict: dict, logs_folder, log_file=None, print_separate_files=False, timestamp=None):
     """
     Expects a dictionary of type Connection ID : conn_info
     if log is not None, records the connections to log file
@@ -78,13 +78,11 @@ def print_conns(conn_dict: dict, log_file=None, print_separate_files=False, time
         if log_file is not None:
             log_file.write("Connection ID: " + str(key) + "\n" + str(value) + "\n")
         if print_separate_files:
-            conn_log = "." + dir_sign + "QRED" + dir_sign + "logs" + dir_sign + timestamp.replace(":", ".") + " ID " + str(key).replace(":", "") + ".txt"
+            conn_log = logs_folder + dir_sign + timestamp.replace(":", ".") + " ID " + str(key).replace(":", "") + ".txt"
             with open(conn_log, "w+") as file:
                 file.write("Connection ID: " + str(key) + "\n" + str(value) + "\n" + "RTT Measurements:\n")
-
                 measurements_str = value.measurements_tostr()
                 file.write(measurements_str)
-
                 file.close()
 
 
@@ -135,6 +133,21 @@ def get_delay_from_flags(flags: str) -> bool:
     delay_mask = 0x10
     return get_bit_from_flags(flags, delay_mask)
 
+def get_logs_folder(dir_sign: str) -> str:
+    if os.path.exists("." + dir_sign + "QRED.py"):  # we are running in the QRED folder context
+        logs_folder = "." + dir_sign + "logs"
+        if not os.path.exists(logs_folder):
+            os.makedirs(logs_folder)
+            print("logs folder created at " + os.getcwd() + dir_sign + "logs")
+        return logs_folder
+
+    else:  # we are running in the main folder context
+        logs_folder = "." + dir_sign + "QRED" + dir_sign + "logs"
+        if not os.path.exists(logs_folder):
+            os.makedirs(logs_folder)
+            print("logs folder created at " + os.getcwd() + dir_sign + "QRED" + dir_sign + "logs")
+        return logs_folder
+
 
 if __name__ == "__main__":
     sys_type = platform.system()  # need to check system type to know whether to use \ or /.
@@ -146,17 +159,14 @@ if __name__ == "__main__":
         raise Exception("Error: Script should be run on Windows or Linux platforms only")
 
     """
-    dictionary's keys: Connection ID
+    dictionary's keys: Destination Connection ID
     dictionary's values: ConnInfo instance depicting relevant connection
     """
     connections_dict: dict = {}
     start_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
-    filename = "." + dir_sign + "QRED" + dir_sign + "logs" + dir_sign + "log.txt"  # change this in order to output to a different file
 
-    if not os.path.exists("." + dir_sign + "QRED" + dir_sign + "logs"):  # check if logs folder exists
-        os.makedirs("." + dir_sign + "QRED" + dir_sign + "logs")  # create logs folder if not
-        print("logs folder created at " + os.getcwd() + dir_sign + "QRED" + dir_sign + "logs")
-
+    logs_folder = get_logs_folder(dir_sign)
+    filename = logs_folder + dir_sign + "log.txt"  # change this in order to output to a different file
     log = open(filename, "a")  # open log file in mode=append
     log.write("\nStarting capture on time: " + start_time + "\n\n")
 
@@ -170,7 +180,7 @@ if __name__ == "__main__":
 
     except KeyboardInterrupt:  # when stopped with Ctrl+C
         # print the info of the connection and record it in log.txt
-        print_conns(connections_dict, log_file=log, print_separate_files=True, timestamp=start_time)
+        print_conns(connections_dict, logs_folder=logs_folder, log_file=log, print_separate_files=True, timestamp=start_time)
         print_finish(log)  # print final message
 
     finally:
