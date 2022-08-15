@@ -97,10 +97,9 @@ def print_finish(log_file=None, event_log=None):
         event_log.write("Stopping Estimator\n")
 
 # Process the quic layer and update the dictionary if necessary
-def process_quic_layer(quic_packet, quic_layer, connections: dict, event_log):
-    curr_ts = float(quic_packet.sniff_timestamp)  # extract the timestamp of the packet
-    event_log.write("Caught quic packet at: " + time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(curr_ts)) +
-                    "." + str(curr_ts % 1)[2:8] + "\n")
+def process_quic_layer(packet_ts, quic_layer, connections: dict, event_log):
+    event_log.write("Caught quic packet at: " + time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(packet_ts)) +
+                    "." + str(packet_ts % 1)[2:8] + "\n")
 
     if quic_layer.has_field("header_form") and quic_layer.has_field("packet_type"):  # can't use dcid for inital packet
         if quic_layer.get_field_value("header_form") == "1" and quic_layer.get_field_value("packet_type") == "0":  # if initial packet
@@ -118,7 +117,7 @@ def process_quic_layer(quic_packet, quic_layer, connections: dict, event_log):
 
     if curr_dcid is not None and curr_dcid not in connections.keys():  # add connection if new
         event_log.write("\tdcid is new\n")
-        connections[curr_dcid] = ConnInfo(curr_ts)
+        connections[curr_dcid] = ConnInfo(packet_ts)
 
     if not layer.has_field("short"):  # nothing to do if there isn't a short header
         event_log.write("\tlong header\n")
@@ -129,7 +128,7 @@ def process_quic_layer(quic_packet, quic_layer, connections: dict, event_log):
     event_log.write("\tdelay is: " + str(curr_delay_bit) + "\n")
 
     if curr_delay_bit and curr_dcid is not None:  # nothing to do if the delay bit is not turned on
-        connections[curr_dcid].new_measurement(curr_ts)  # insert the new measurement to the connection's info
+        connections[curr_dcid].new_measurement(packet_ts)  # insert the new measurement to the connection's info
 
 
 # Extract the flags from the raw short header
@@ -194,7 +193,8 @@ if __name__ == "__main__":
         for packet in live_cap.sniff_continuously():
             for layer in packet.layers:  # eg. ETH, IP, UDP, QUIC, ...
                 if layer.layer_name == "quic":
-                    process_quic_layer(packet, layer, connections_dict, event_log)
+                    timestamp = float(packet.sniff_timestamp) # extract the timestamp of the packet
+                    process_quic_layer(timestamp, layer, connections_dict, event_log)
 
     except KeyboardInterrupt:  # when stopped with Ctrl+C
         # print the info of the connection and record it in log.txt
