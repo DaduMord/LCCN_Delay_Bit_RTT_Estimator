@@ -29,6 +29,8 @@ class ConnInfo:
         self.rtt = self.calc_rtt(latest_rtt)  # update rtt
         self.rtt_measurements.append((latest_rtt, curr_ts))  # insert measurement to measurements array
         self.delay_ts = curr_ts  # update last delay bit timestamp
+        event_log.write("\t\tnew measurement is: %.3f ms\n" % (latest_rtt * 1000))
+        event_log.write("\t\tnew RTT estimation is: %.3f ms\n" % (self.rtt * 1000))
 
     # Calculate a new rtt with the moving average algorithm
     def calc_rtt(self, new_rtt: float) -> float:
@@ -55,8 +57,7 @@ class ConnInfo:
         res = ""
         for i, measurement in enumerate(measurements):
             timestamp = measurement[1]
-            timestamp_ms = timestamp % 1
-            timestamp_ms = str(timestamp_ms)[2:8]
+            timestamp_ms = str(timestamp % 1)[2:8]
             rtt = "%.3f ms" % (measurement[0] * 1000)
             res += "%3s: %8s :: %s.%s\n" % (str(i), rtt, time.strftime('%Y-%m-%d %H:%M:%S',
                                                                        time.localtime(timestamp)), timestamp_ms)
@@ -87,16 +88,23 @@ def print_conns(conn_dict: dict, logs_folder, log_file=None, print_separate_file
 
 
 # Print final message to default output and log file
-def print_finish(log_file=None):
+def print_finish(log_file=None, event_log=None):
     print("Stopping Estimator")
 
     if log_file is not None:
         log_file.write("Stopping Estimator\n")
+    if event_log is not None:
+        event_log.write("Stopping Estimator\n")
 
 # Process the quic layer and update the dictionary if necessary
-def process_quic_layer(quic_packet, quic_layer, connections: dict):
+def process_quic_layer(quic_packet, quic_layer, connections: dict, event_log):
+    curr_ts = float(quic_packet.sniff_timestamp)  # extract the timestamp of the packet
+    event_log.write("Caught quic packet at: " + time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(curr_ts)) +
+                    "." + str(curr_ts % 1)[2:8] + "\n")
+
     if quic_layer.has_field("header_form") and quic_layer.has_field("packet_type"):  # can't use dcid for inital packet
         if quic_layer.get_field_value("header_form") == "1" and quic_layer.get_field_value("packet_type") == "0":  # if initial packet
+            event_log.write("\tinitial packet\n")
             return
 
     if quic_layer.has_field("dcid"):  # extract the dcid (Destination Connection ID)
@@ -105,17 +113,20 @@ def process_quic_layer(quic_packet, quic_layer, connections: dict):
         curr_dcid = quic_layer.get_field_value("short").get_field_value("dcid")
     else:
         curr_dcid = None
-        #TODO: log that dcid was None
-    curr_ts = float(quic_packet.sniff_timestamp)  # extract the timestamp of the packet
+
+    event_log.write("\tdcid is: " + curr_dcid + "\n")
 
     if curr_dcid is not None and curr_dcid not in connections.keys():  # add connection if new
+        event_log.write("\tdcid is new\n")
         connections[curr_dcid] = ConnInfo(curr_ts)
 
     if not layer.has_field("short"):  # nothing to do if there isn't a short header
+        event_log.write("\tlong header\n")
         return
 
     short_raw = quic_layer.get_field_value("short_raw")[0]  # extract the raw short information
     curr_delay_bit = get_delay_from_flags(get_flags(short_raw))  # extract the delay bit
+    event_log.write("\tdelay is: " + str(curr_delay_bit) + "\n")
 
     if curr_delay_bit and curr_dcid is not None:  # nothing to do if the delay bit is not turned on
         connections[curr_dcid].new_measurement(curr_ts)  # insert the new measurement to the connection's info
@@ -174,6 +185,8 @@ if __name__ == "__main__":
     filename = logs_folder + dir_sign + "log.txt"  # change this in order to output to a different file
     log = open(filename, "a+")  # open log file in mode=append
     log.write("\nStarting capture on time: " + start_time + "\n\n")
+    event_log = open(logs_folder + dir_sign + "event_log.txt", mode="a+")
+    event_log.write("\nStarting capture on time: " + start_time + "\n\n")
 
     live_cap = pyshark.LiveCapture(display_filter="quic", include_raw=True, use_json=True)
 
@@ -181,12 +194,13 @@ if __name__ == "__main__":
         for packet in live_cap.sniff_continuously():
             for layer in packet.layers:  # eg. ETH, IP, UDP, QUIC, ...
                 if layer.layer_name == "quic":
-                    process_quic_layer(packet, layer, connections_dict)
+                    process_quic_layer(packet, layer, connections_dict, event_log)
 
     except KeyboardInterrupt:  # when stopped with Ctrl+C
         # print the info of the connection and record it in log.txt
         print_conns(connections_dict, logs_folder=logs_folder, log_file=log, print_separate_files=True, timestamp=start_time)
-        print_finish(log)  # print final message
+        print_finish(log, event_log)  # print final message
 
     finally:
         log.close()
+        event_log.close()
