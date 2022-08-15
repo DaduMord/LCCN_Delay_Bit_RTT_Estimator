@@ -95,12 +95,17 @@ def print_finish(log_file=None):
 
 # Process the quic layer and update the dictionary if necessary
 def process_quic_layer(quic_packet, quic_layer, connections: dict):
+    if quic_layer.has_field("header_form") and quic_layer.has_field("packet_type"):  # can't use dcid for inital packet
+        if quic_layer.get_field_value("header_form") == "1" and quic_layer.get_field_value("packet_type") == "0":  # if initial packet
+            return
+
     if quic_layer.has_field("dcid"):  # extract the dcid (Destination Connection ID)
         curr_dcid = quic_layer.get_field_value("dcid")
     elif quic_layer.has_field("short"):
         curr_dcid = quic_layer.get_field_value("short").get_field_value("dcid")
     else:
         curr_dcid = None
+        #TODO: log that dcid was None
     curr_ts = float(quic_packet.sniff_timestamp)  # extract the timestamp of the packet
 
     if curr_dcid is not None and curr_dcid not in connections.keys():  # add connection if new
@@ -167,14 +172,14 @@ if __name__ == "__main__":
 
     logs_folder = get_logs_folder(dir_sign)
     filename = logs_folder + dir_sign + "log.txt"  # change this in order to output to a different file
-    log = open(filename, "a")  # open log file in mode=append
+    log = open(filename, "a+")  # open log file in mode=append
     log.write("\nStarting capture on time: " + start_time + "\n\n")
 
     live_cap = pyshark.LiveCapture(display_filter="quic", include_raw=True, use_json=True)
 
     try:
         for packet in live_cap.sniff_continuously():
-            for layer in packet.layers:
+            for layer in packet.layers:  # eg. ETH, IP, UDP, QUIC, ...
                 if layer.layer_name == "quic":
                     process_quic_layer(packet, layer, connections_dict)
 
