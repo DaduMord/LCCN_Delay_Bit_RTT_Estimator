@@ -163,6 +163,28 @@ def get_logs_folder(dir_sign: str) -> str:
             print("logs folder created at " + os.getcwd() + dir_sign + "QRED" + dir_sign + "logs")
         return logs_folder
 
+#
+# def check_resereved_bits_on(quic_layer):
+#     if not layer.has_field("short"):  # nothing to do if there isn't a short header
+#         return
+#
+#     short_raw = quic_layer.get_field_value("short_raw")[0]  # extract the raw short information
+#     flags = get_flags(short_raw)
+#     first_mask = 0x10
+#     first_reserved_bit = get_bit_from_flags(flags, first_mask)
+#     second_mask = 0x08
+#     second_reserved_bit = get_bit_from_flags(flags, second_mask)
+#
+#     if first_reserved_bit and second_reserved_bit:
+#         print("first and second on!")
+#     else:
+#         print("something not right")
+#         if first_reserved_bit is not True:
+#             print("first off")
+#         else:
+#             print("second off")
+#         raise Exception("This is bad!")
+
 
 if __name__ == "__main__":
     sys_type = platform.system()  # need to check system type to know whether to use \ or /.
