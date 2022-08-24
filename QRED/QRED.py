@@ -16,15 +16,24 @@ class ConnInfo:
     """
 
     # Initialize a new conn_info class. default for rtt field is None
-    def __init__(self, edge_ts: float, rtt: float = None):
+    def __init__(self, delay_ts: float = None, rtt: float = None):
         self.rtt = rtt
-        self.delay_ts = edge_ts
+        self.delay_ts = delay_ts
         self.rtt_measurements = []
+        self.T_max = 0.1  # 100 ms TODO: change this
 
     # Update the rtt estimation and connection fields if necessary
     def new_measurement(self, curr_ts: float):
+        if self.delay_ts is None:
+            self.delay_ts = curr_ts
+            event_log.write("\tfirst delay encountered\n")
+            return
         latest_rtt = curr_ts - self.delay_ts  # calculate the time difference from last delay bit
         if latest_rtt == 0.0:
+            return
+        if self.T_max is not None and latest_rtt > self.T_max:
+            event_log.write("\t\tnew measurement is: %.3f ms\n" % (latest_rtt * 1000))
+            event_log.write("\t\tmeasurement is higher than T_max\n")
             return
         self.rtt = self.calc_rtt(latest_rtt)  # update rtt
         self.rtt_measurements.append((latest_rtt, curr_ts))  # insert measurement to measurements array
@@ -108,16 +117,18 @@ def process_quic_layer(packet_ts, quic_layer, connections: dict, event_log):
 
     if quic_layer.has_field("dcid"):  # extract the dcid (Destination Connection ID)
         curr_dcid = quic_layer.get_field_value("dcid")
-    elif quic_layer.has_field("short"):
+    elif quic_layer.has_field("short") and quic_layer.get_field_value("short").has_field("dcid"):
         curr_dcid = quic_layer.get_field_value("short").get_field_value("dcid")
     else:
         curr_dcid = None
 
     event_log.write("\tdcid is: " + curr_dcid + "\n")
+    if curr_dcid is None:
+        return
 
-    if curr_dcid is not None and curr_dcid not in connections.keys():  # add connection if new
+    if curr_dcid not in connections.keys():  # add connection if new
         event_log.write("\tdcid is new\n")
-        connections[curr_dcid] = ConnInfo(packet_ts)
+        connections[curr_dcid] = ConnInfo()
 
     if not layer.has_field("short"):  # nothing to do if there isn't a short header
         event_log.write("\tlong header\n")
@@ -127,7 +138,7 @@ def process_quic_layer(packet_ts, quic_layer, connections: dict, event_log):
     curr_delay_bit = get_delay_from_flags(get_flags(short_raw))  # extract the delay bit
     event_log.write("\tdelay is: " + str(curr_delay_bit) + "\n")
 
-    if curr_delay_bit and curr_dcid is not None:  # nothing to do if the delay bit is not turned on
+    if curr_delay_bit:  # nothing to do if the delay bit is not turned on
         connections[curr_dcid].new_measurement(packet_ts)  # insert the new measurement to the connection's info
 
 
@@ -215,7 +226,7 @@ if __name__ == "__main__":
         for packet in live_cap.sniff_continuously():
             for layer in packet.layers:  # eg. ETH, IP, UDP, QUIC, ...
                 if layer.layer_name == "quic":
-                    timestamp = float(packet.sniff_timestamp) # extract the timestamp of the packet
+                    timestamp = float(packet.sniff_timestamp)  # extract the timestamp of the packet
                     process_quic_layer(timestamp, layer, connections_dict, event_log)
 
     except KeyboardInterrupt:  # when stopped with Ctrl+C
