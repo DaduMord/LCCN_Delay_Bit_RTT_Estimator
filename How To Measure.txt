@@ -1,4 +1,7 @@
-1. Install aioquic, and python. refer to https://github.com/aiortc/aioquic for instructions.
+1. Install a version of aioquic with delay bit and python.
+	To install the version with the delay bit, install regular aioquic, replace the aioquic folder with
+	our modified folder and then open command prompt, traverse to our aioquic implementation folder and run
+	the command `pip install -e .`
 2. Clone the QRED repository - https://github.com/DaduMord/LCCN_Delay_Bit_RTT_Estimator
 	(this is the delay bit based tool)
 3. Follow the instructions in the repository's README to install wireshark and pyshark
