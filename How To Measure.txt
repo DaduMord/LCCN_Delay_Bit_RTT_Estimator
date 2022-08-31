@@ -1,0 +1,22 @@
+1. Install aioquic, and python. refer to https://github.com/aiortc/aioquic for instructions.
+2. Clone the QRED repository - https://github.com/DaduMord/LCCN_Delay_Bit_RTT_Estimator
+	(this is the delay bit based tool)
+3. Follow the instructions in the repository's README to install wireshark and pyshark
+	(make sure you are installing Pyshark version 0.4.5)
+4. Clone the QRE repository - https://github.com/DaduMord/LCCN-QUIC-Spin-Bit
+	(this is the spin bit based tool)
+5. Apply Netem (instructions can be found at https://wiki.linuxfoundation.org/networking/netem).
+	Please notice that you will need to find the name of the interface you are using with the
+	`ifconfig` command and use the interface name instead of `eth0`.
+	You will also need admin privelages.
+6. Run the QRE, QRED and create a QUIC connection (using aioquic's examples). Stop the QRE and QRED (using Ctrl+C) to print the logs.
+
+Notes:
+- The QRE needs to be run from the main repository context. go to `LCCN-QUIC-Spin-Bit` directory and run the command
+	`python QRE\QRE.py`.
+- If you are using PyCharm for the QRE or QRED, notice that you will have to emulate terminal in output console.
+	Do this through Edit Configurations option.
+- To disable Netem you will need to manually disable your changes.
+	For example, if you used netem to emulate a 100ms extra delay, to disable it you will need to emulate 0ms extra delay
+	(using the same command with a different value).
+
