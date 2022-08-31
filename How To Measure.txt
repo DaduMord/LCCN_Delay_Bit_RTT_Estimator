@@ -22,4 +22,8 @@ Notes:
 - To disable Netem you will need to manually disable your changes.
 	For example, if you used netem to emulate a 100ms extra delay, to disable it you will need to emulate 0ms extra delay
 	(using the same command with a different value).
+- To change the T_max variable and max process time variable search for the variables
+	`self._max_process_time`
+    `self._delay_T_max`
+	in the file located at "aioquic\src\aioquic\quic\connection.py"
 
