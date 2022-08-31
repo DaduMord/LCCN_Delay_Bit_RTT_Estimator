@@ -1,5 +1,9 @@
 
+# This is a tool to extract the rtt values listed in a qlog file.
+# The tool ignores an rtt measurement if the last measurement was exactly the same.
 
+
+# insert the path to the qlog file to analyze in this variable
 qlogname = "C:\\Technion\\CommunicationProject\\LCCN_Delay_Bit_RTT_Estimator\\Estimation_Records\\100KB regular\\client_qlog.qlog"
 
 
