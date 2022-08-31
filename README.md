@@ -14,6 +14,8 @@ To stop the tool, send a Ctrl+C to it. Upon receiving the signal, the tool will 
 
 ## Important Notice
 
+This tool currently runs on Windows platform only.
+
 This tool requires tshark and pyshark as dependencies.
 For tshark, we recommend to install [Wireshark](https://www.wireshark.org/download.html) as it will automatically install tshark as well.
 
