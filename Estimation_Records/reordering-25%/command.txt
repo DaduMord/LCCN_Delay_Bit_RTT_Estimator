@@ -1,0 +1,1 @@
+sudo tc qdisc add dev ens160 root netem delay 3ms reorder 25% 50%
