@@ -1,0 +1,6 @@
+Connection ID: ef:38:9e:46:ca:2a:28:c6
+RTT: Not Yet Measured
+Last Edge Timestamp: 2022-10-18 19:18:10
+
+RTT Measurements:
+No Measurements
