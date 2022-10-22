@@ -32,6 +32,7 @@ class ConnInfo:
         if latest_rtt == 0.0:
             return
         if self.T_max is not None and latest_rtt > self.T_max:
+            self.delay_ts = curr_ts  # update last delay bit timestamp
             event_log.write("\t\tnew measurement is: %.3f ms\n" % (latest_rtt * 1000))
             event_log.write("\t\tmeasurement is higher than T_max\n")
             return
