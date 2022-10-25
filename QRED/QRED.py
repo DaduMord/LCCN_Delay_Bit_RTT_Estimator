@@ -85,6 +85,7 @@ class ConnInfo:
         else:
             res = "RTT: " + ("%.3f ms\n" % (self.rtt * 1000))
         res += "Last Delay Timestamp: " + last_edge_ts + "\n"
+        res += "Loss Rate (Q bit calculated): " + str(self.calc_loss()) + "%\n"
         return res
 
     # Convert measurements array to string for printing purposes
@@ -119,9 +120,7 @@ def print_conns(conn_dict: dict, logs_folder, log_file=None, print_separate_file
         if print_separate_files:
             conn_log = logs_folder + dir_sign + timestamp.replace(":", ".") + " ID " + str(key).replace(":", "") + ".txt"
             with open(conn_log, "w+") as file:
-                file.write("Connection ID: " + str(key) + "\n" + str(value))
-                file.write("Loss Rate (Q bit calculated): " + str(value.calc_loss()) + "\n")
-                file.write("\n" + "RTT Measurements:\n")
+                file.write("Connection ID: " + str(key) + "\n" + str(value) + "\n" + "RTT Measurements:\n")
                 measurements_str = value.measurements_tostr()
                 file.write(measurements_str)
                 file.close()
