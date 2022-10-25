@@ -22,11 +22,11 @@ class ConnInfo:
         self.rtt_measurements = []
         self.T_max = 0.1  # 100 ms TODO: change this
 
-        self.q_bit_N = 64
-        self.q_MBT = self.q_bit_N/4  # Marking Block Threshold
-        self.q_curr_len = [0, 0]
-        self.q_block_num = [0, 0]
-        self.q_packet_count = [0, 0]
+        self.q_bit_N: int = 64
+        self.q_MBT: int = self.q_bit_N // 4  # Marking Block Threshold
+        self.q_curr_len: [int, int] = [0, 0]
+        self.q_block_num: [int, int] = [0, 0]
+        self.q_packet_count: [int, int] = [0, 0]
 
     def process_q_bit(self, new_q: bool) -> None:
         # TODO: check this
