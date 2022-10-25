@@ -24,7 +24,6 @@ class ConnInfo:
 
         self.q_bit_N = 64
         self.q_MBT = self.q_bit_N/4  # Marking Block Threshold
-        self.q_curr = 0
         self.q_curr_len = [0, 0]
         self.q_block_num = [0, 0]
         self.q_packet_count = [0, 0]
