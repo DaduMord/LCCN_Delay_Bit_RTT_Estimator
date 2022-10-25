@@ -45,6 +45,8 @@ class ConnInfo:
     def calc_loss(self) -> float:
         number_of_blocks = sum(self.q_block_num)
         number_of_packets = sum(self.q_packet_count)
+        print("Num of blocks is:", number_of_blocks)
+        print("Num of packets is:", number_of_packets)
         if number_of_blocks == 0:
             return 0
         return 1 - (number_of_packets/(number_of_blocks * self.q_bit_N))
