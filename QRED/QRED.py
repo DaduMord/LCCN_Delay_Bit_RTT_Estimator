@@ -86,7 +86,7 @@ class ConnInfo:
         else:
             res = "RTT: " + ("%.3f ms\n" % (self.rtt * 1000))
         res += "Last Delay Timestamp: " + last_edge_ts + "\n"
-        res += "Loss Rate (Q bit calculated): " + str(self.calc_loss()) + "%\n"
+        res += "Loss Rate (Q bit calculated): " + str(self.calc_loss() * 100) + "%\n"
         return res
 
     # Convert measurements array to string for printing purposes
