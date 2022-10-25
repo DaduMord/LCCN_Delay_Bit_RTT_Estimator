@@ -22,6 +22,34 @@ class ConnInfo:
         self.rtt_measurements = []
         self.T_max = 0.1  # 100 ms TODO: change this
 
+        self.q_bit_N = 64
+        self.q_MBT = self.q_bit_N/4  # Marking Block Threshold
+        self.q_curr = 0
+        self.q_curr_len = [0, 0]
+        self.q_block_num = [0, 0]
+        self.q_packet_count = [0, 0]
+
+    def process_q_bit(self, new_q: bool) -> None:
+        # TODO: check this
+        self.q_curr_len[new_q] += 1
+        if self.q_curr_len[new_q] == self.q_MBT:  # We are in a block of new_q
+            if self.q_curr_len[not new_q] != 0:  # First time we reach MBT we don't want to register the block
+                self.q_block_num[not new_q] += 1
+                self.q_packet_count[not new_q] += self.q_curr_len[not new_q]
+                self.q_curr_len[not new_q] = 0
+                event_log.write("\t\tnew q bit block confirmed\n")
+        if self.q_curr_len[new_q] > self.q_bit_N:  # This would happen only under severe reordering
+            # do we need to do something? might be higher, but it only means we registered the last block too soon.
+            # the over-carried bit will be registered in the next block with the same q_bit.
+            event_log.write("\t\tWarning: severe reordering might temper with the loss rate\n")
+
+    def calc_loss(self) -> float:
+        number_of_blocks = sum(self.q_block_num)
+        number_of_packets = sum(self.q_packet_count)
+        if number_of_blocks == 0:
+            return 0
+        return 1 - (number_of_packets/(number_of_blocks * self.q_bit_N))
+
     # Update the rtt estimation and connection fields if necessary
     def new_measurement(self, curr_ts: float):
         if self.delay_ts is None:
@@ -56,7 +84,7 @@ class ConnInfo:
             res = "RTT: Not Yet Measured\n"
         else:
             res = "RTT: " + ("%.3f ms\n" % (self.rtt * 1000))
-        res += "Last Edge Timestamp: " + last_edge_ts + "\n"
+        res += "Last Delay Timestamp: " + last_edge_ts + "\n"
         return res
 
     # Convert measurements array to string for printing purposes
@@ -91,7 +119,9 @@ def print_conns(conn_dict: dict, logs_folder, log_file=None, print_separate_file
         if print_separate_files:
             conn_log = logs_folder + dir_sign + timestamp.replace(":", ".") + " ID " + str(key).replace(":", "") + ".txt"
             with open(conn_log, "w+") as file:
-                file.write("Connection ID: " + str(key) + "\n" + str(value) + "\n" + "RTT Measurements:\n")
+                file.write("Connection ID: " + str(key) + "\n" + str(value))
+                file.write("Loss Rate (Q bit calculated): " + str(value.calc_loss()) + "\n")
+                file.write("\n" + "RTT Measurements:\n")
                 measurements_str = value.measurements_tostr()
                 file.write(measurements_str)
                 file.close()
@@ -145,11 +175,17 @@ def process_quic_layer(packet_ts, quic_layer, connections: dict, event_log):
     if curr_delay_bit:  # nothing to do if the delay bit is not turned on
         connections[curr_dcid].new_measurement(packet_ts)  # insert the new measurement to the connection's info
 
+    curr_q_bit = get_q_bit_from_flags(get_flags(short_raw))
+    event_log.write("\tq bit is: " + str(curr_q_bit) + "\n")
+    connections[curr_dcid].process_q_bit(curr_q_bit)
+
+
 def process_packet(packet):
     packet_ts = float(packet.sniff_timestamp)
     for layer in packet:
         if layer.layer_name == "quic":
             process_quic_layer(packet_ts, layer, connections_dict, event_log)
+
 
 # Extract the flags from the raw short header
 def get_flags(short_raw: str) -> str:
@@ -167,6 +203,14 @@ def get_delay_from_flags(flags: str) -> bool:
     assert (len(flags) == 2)
     delay_mask = 0x10
     return get_bit_from_flags(flags, delay_mask)
+
+
+# Extract the delay bit from the flags
+def get_q_bit_from_flags(flags: str) -> bool:
+    assert (len(flags) == 2)
+    q_bit_mask = 0x08
+    return get_bit_from_flags(flags, q_bit_mask)
+
 
 def get_logs_folder(dir_sign: str) -> str:
     if os.path.exists("." + dir_sign + "QRED.py"):  # we are running in the QRED folder context
