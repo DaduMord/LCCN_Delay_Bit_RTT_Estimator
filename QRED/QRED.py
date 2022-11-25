@@ -22,7 +22,7 @@ class ConnInfo:
         self.rtt_measurements = []
         self.T_max = 0.1  # 100 ms TODO: change this
 
-        self.q_bit_N: int = 64
+        self.q_bit_N: int = 16
         self.q_MBT: int = self.q_bit_N // 4  # Marking Block Threshold
         self.q_curr_len: [int, int] = [0, 0]
         self.q_block_num: [int, int] = [0, 0]
@@ -45,8 +45,6 @@ class ConnInfo:
     def calc_loss(self) -> float:
         number_of_blocks = sum(self.q_block_num)
         number_of_packets = sum(self.q_packet_count)
-        print("Num of blocks is:", self.q_block_num)
-        print("Num of packets is:", self.q_packet_count)
         if number_of_blocks == 0:
             return 0
         return 1 - (number_of_packets/(number_of_blocks * self.q_bit_N))
@@ -115,6 +113,9 @@ def print_conns(conn_dict: dict, logs_folder, log_file=None, print_separate_file
     for key, value in conn_dict.items():
         print("Connection ID:", key)
         print(value, end="\n")
+
+        print("Num of blocks is:", value.q_block_num)
+        print("Num of packets is:", value.q_packet_count)
 
         if log_file is not None:
             log_file.write("Connection ID: " + str(key) + "\n" + str(value) + "\n")
