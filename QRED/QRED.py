@@ -46,7 +46,7 @@ class ConnInfo:
         number_of_blocks = sum(self.q_block_num)
         number_of_packets = sum(self.q_packet_count)
         if number_of_blocks == 0:
-            return 0
+            return -1.0
         return 1 - (number_of_packets/(number_of_blocks * self.q_bit_N))
 
     # Update the rtt estimation and connection fields if necessary
@@ -84,7 +84,12 @@ class ConnInfo:
         else:
             res = "RTT: " + ("%.3f ms\n" % (self.rtt * 1000))
         res += "Last Delay Timestamp: " + last_edge_ts + "\n"
-        res += "Loss Rate (Q bit calculated): " + str(self.calc_loss() * 100) + "%\n"
+        
+        raw_loss_rate = self.calc_loss()
+        if raw_loss_rate == -1.0:
+            res += "Loss Rate (Q bit calculated): Not Yet Measured\n"
+        else:
+            res += "Loss Rate (Q bit calculated): " + str(raw_loss_rate * 100) + "%\n"
         return res
 
     # Convert measurements array to string for printing purposes
