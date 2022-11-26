@@ -29,7 +29,6 @@ class ConnInfo:
         self.q_packet_count: [int, int] = [0, 0]
 
     def process_q_bit(self, new_q: bool) -> None:
-        # TODO: check this
         self.q_curr_len[new_q] += 1
         if self.q_curr_len[new_q] == self.q_MBT:  # We are in a block of new_q
             if self.q_curr_len[not new_q] != 0:  # First time we reach MBT we don't want to register the block
