@@ -233,7 +233,7 @@ def get_logs_folder(dir_sign: str) -> str:
         return logs_folder
 
 #
-# def check_resereved_bits_on(quic_layer):
+# def check_reserved_bits_on(quic_layer):
 #     if not layer.has_field("short"):  # nothing to do if there isn't a short header
 #         return
 #
