@@ -20,7 +20,7 @@ class ConnInfo:
         self.rtt = rtt
         self.delay_ts = delay_ts
         self.rtt_measurements = []
-        self.T_max = 0.1  # 100 ms TODO: change this
+        self.T_max = 0.3  # 300 ms
 
         self.q_bit_N: int = 64
         self.q_MBT: int = self.q_bit_N // 4  # Marking Block Threshold
