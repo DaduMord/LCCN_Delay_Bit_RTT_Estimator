@@ -20,16 +20,15 @@ class ConnInfo:
         self.rtt = rtt
         self.delay_ts = delay_ts
         self.rtt_measurements = []
-        self.T_max = 0.1  # 100 ms TODO: change this
+        self.T_max = 0.3  # 300 ms
 
-        self.q_bit_N: int = 16
+        self.q_bit_N: int = 64
         self.q_MBT: int = self.q_bit_N // 4  # Marking Block Threshold
         self.q_curr_len: [int, int] = [0, 0]
         self.q_block_num: [int, int] = [0, 0]
         self.q_packet_count: [int, int] = [0, 0]
 
     def process_q_bit(self, new_q: bool) -> None:
-        # TODO: check this
         self.q_curr_len[new_q] += 1
         if self.q_curr_len[new_q] == self.q_MBT:  # We are in a block of new_q
             if self.q_curr_len[not new_q] != 0:  # First time we reach MBT we don't want to register the block
@@ -46,7 +45,7 @@ class ConnInfo:
         number_of_blocks = sum(self.q_block_num)
         number_of_packets = sum(self.q_packet_count)
         if number_of_blocks == 0:
-            return 0
+            return -1.0
         return 1 - (number_of_packets/(number_of_blocks * self.q_bit_N))
 
     # Update the rtt estimation and connection fields if necessary
@@ -84,7 +83,12 @@ class ConnInfo:
         else:
             res = "RTT: " + ("%.3f ms\n" % (self.rtt * 1000))
         res += "Last Delay Timestamp: " + last_edge_ts + "\n"
-        res += "Loss Rate (Q bit calculated): " + str(self.calc_loss() * 100) + "%\n"
+        
+        raw_loss_rate = self.calc_loss()
+        if raw_loss_rate == -1.0:
+            res += "Loss Rate (Q bit calculated): Not Yet Measured\n"
+        else:
+            res += "Loss Rate (Q bit calculated): " + str(raw_loss_rate * 100) + "%\n"
         return res
 
     # Convert measurements array to string for printing purposes
@@ -113,9 +117,6 @@ def print_conns(conn_dict: dict, logs_folder, log_file=None, print_separate_file
     for key, value in conn_dict.items():
         print("Connection ID:", key)
         print(value, end="\n")
-
-        print("Num of blocks is:", value.q_block_num)
-        print("Num of packets is:", value.q_packet_count)
 
         if log_file is not None:
             log_file.write("Connection ID: " + str(key) + "\n" + str(value) + "\n")
@@ -229,7 +230,7 @@ def get_logs_folder(dir_sign: str) -> str:
         return logs_folder
 
 #
-# def check_resereved_bits_on(quic_layer):
+# def check_reserved_bits_on(quic_layer):
 #     if not layer.has_field("short"):  # nothing to do if there isn't a short header
 #         return
 #
